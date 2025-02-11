@@ -2,6 +2,7 @@ import userItem from "../models/UserModel.js"
 import fs  from "fs";
 import  path  from "path";
 import { fileURLToPath } from 'url';
+import cloudinary from 'cloudinary';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,6 +90,36 @@ const createUser = async (req, res) => {
     }
 };
 
+const uploadProfileFile = async (req, res) => {
+    if(!req.file){
+        return res.status(400).json({message : "No send file"});
+    }
+
+    try {
+        console.log('Fayl yükləndi, Cloudinary-ə göndərilir...');
+
+        // Faylın buffer məlumatını base64 formatına çevir
+        const fileBuffer = req.file.buffer.toString('base64');
+
+        // Cloudinary-ə yüklə
+        const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${fileBuffer}`, {
+            folder: 'address_book_images',
+            resource_type: 'auto',
+        });
+
+        console.log('Şəkil Cloudinary-ə uğurla yükləndi:', result.secure_url);
+
+        // Cavab olaraq şəklin URL-ni qaytar
+        res.status(200).json({
+            message: 'Şəkil uğurla yükləndi!',
+            imageUrl: result.secure_url,
+        });
+    } catch (err) {
+        console.error('Şəkil yüklənmədi:', err);
+        res.status(500).json({ message: 'Şəkil yüklənmədi.', error: err.message });
+    }
+}
+
 /* const postUsers = async(req,res) =>{
     
     try { 
@@ -116,4 +147,4 @@ const deleteUser = async (req,res) => {
 }
 
 
-export { phoneCodes, createUser, getUser }
+export { phoneCodes, createUser, getUser, uploadProfileFile }
