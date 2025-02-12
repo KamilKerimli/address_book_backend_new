@@ -1,5 +1,5 @@
 import express from 'express';
-import { phoneCodes, createUser, getUser, uploadProfileFile } from '../controllers/UserController.js';
+import { phoneCodes, createUser, getUser, uploadProfileFile, login } from '../controllers/UserController.js';
 import multer from "multer";
 
 const router = express.Router();
@@ -12,7 +12,8 @@ router.route("/")
 .post(createUser);
 
 router.get("/phoneCodes", phoneCodes);
-router.post("/upload", upload.single('file'), uploadProfileFile)
+router.post("/upload", upload.single('file'), uploadProfileFile);
+router.get("/login", login);
 
 
 // router.route("/phoneCodes")
