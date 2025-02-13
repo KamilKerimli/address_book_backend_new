@@ -15,13 +15,4 @@ router.get("/phoneCodes", phoneCodes);
 router.post("/upload", upload.single('file'), uploadProfileFile);
 router.get("/login", login);
 
-
-// router.route("/phoneCodes")
-// .get(phoneCodes)
-/* .post(postProducts)
-
-router.route("/:id")
-.delete(deleteProducts) */
-
-
 export default router
