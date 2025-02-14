@@ -1,5 +1,6 @@
 import userItem from '../models/UserModel.js';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 
 const register = async (req, res) => {
     try {
@@ -78,4 +79,45 @@ const checkToken = async (req, res) => {
     }
 };
 
-export {register, login, checkToken };
+const sendVerificationCode = async (req, res) => {
+    const confirmCode = Math.floor(100000 + Math.random() * 900000);
+
+    const { toEmail } = req.body;
+
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: toEmail,
+        subject: 'Your Confirmation Code',
+    html: `
+        <div style="font-family: Arial, sans-serif; color: #333; text-align: center;">
+            <h2 style="color:#0091ff;">Email Confirmation</h2>
+            <p style="color:#0ebde9;">Hello,</p>
+            <p style="color: #0ebde9;">Your confirmation code is:</p>
+            <h1 style="font-size: 32px; color: #0091ff; margin: 20px 0;">${confirmCode}</h1>
+            <p>Please use this code to confirm your email address.</p>
+            <p>If you did not request this, please ignore this email.</p>
+            <p>Thank you,</p>
+            <p>Company Name</p>
+        </div>
+    `
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email send successfully:', info.response);
+        res.status(200).json({message: "Email send successfully :)"})
+    } catch (error) {
+        console.error('Email is not sended: ', error.message);
+        res.status(400).json({message: "Email is not sended :("})
+    }
+};
+
+export {register, login, checkToken, sendVerificationCode };
