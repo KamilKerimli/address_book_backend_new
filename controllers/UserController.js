@@ -3,6 +3,7 @@ import fs  from "fs";
 import  path  from "path";
 import { fileURLToPath } from 'url';
 import cloudinary from 'cloudinary';
+import jwt from "jsonwebtoken";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,22 +47,7 @@ const login = async (req, res) =>{
     }
 }
 
-const getUser = async (req, res) => {
-    const { token } = req.body;
-    try {
-        const users = await userItem.find()
-        if (users.length === 0) {
-            console.log("No users found");
-            res.status(404).json({ message: "No users found" });
-        } else {
-            res.json(users);
-        }
-    } catch (err) {
-        console.error("Error: ", err);
-        res.status(500).json({ error: "An error occurred while fetching users" });
-    }
-};
- 
+// Move another loaction.
 const phoneCodes = async (req, res) => {
     try {
         const filePath = path.join(__dirname, '../datas/phoneCode.json');
@@ -77,43 +63,73 @@ const phoneCodes = async (req, res) => {
     }
     
 }
-
+// OK
 const createUser = async (req, res) => {
     try {
-        const { frt_name, usrnm, brthdy, eml, pasw } = req.body;
+        const { first_name, username, birthday, email, password } = req.body;
 
-        // Check if required fields are provided
-        if (!frt_name || !usrnm || !brthdy || !eml || !pasw) {
-            return res.status(400).json({ message: "All fields are required" });
+        if (!first_name || !username || !birthday || !email || !password) {
+            return res.status(400).json({ message: "Please all field enter value." });
         }
 
-        // Check if user already exists
-        const existingUser = await userItem.findOne({ eml });
+        const existingUser = await userItem.findOne({ email });
+
+        // return res.json({object: existingUser, mess: "No"});
+
         if (existingUser) {
-            return res.status(409).json({ message: "User already exists" });
+            return res.status(409).json({ message: "User already exists. Please enter other email" });
+        }
+        
+        const existingUsername = await userItem.findOne({ username });
+        if (existingUsername) {
+            return res.status(409).json({ message: "Username already exists. Please enter other username" });
         }
 
-        // Create new user
-        const newUser = new userItem({
-            imgURL:"",
-            first_name: frt_name,
-            last_name: "",
-            birthday: brthdy,
-            username:usrnm,
-            email:eml,
-            password:pasw,
-            phoneCode:"",
-            phone:""
-        });
-        await newUser.save();
+        // const newUser = new userItem({
+        //     first_name: first_name,
+        //     username:username,
+        //     birthday:birthday,
+        //     email:eml, 
+        //     password: password
+        // });
+        // await newUser.save();
 
-        res.status(201).json({ message: "User created successfully"});
+        res.status(200).json({ message: "Please confirm email address"});
     } catch (err) {
         console.error("Error: ", err); 
-        res.status(500).json({ message: "Database connection or another error | Error: " || err.message });
+        res.status(500).json({ message: "Server error"});
     }
 };
 
+//OK
+const getUser = async (req, res) => {
+    try {
+        const email = req.params.email;
+        const password = req.params.password;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Please enter email and password" });
+        }
+        
+        const user = await userItem.findOne({email});
+
+        if (user == null) {
+            res.status(404).json({ message: "Please enter correct email or password" });
+        } 
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Please enter correct password" });
+        }
+
+        const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, { expiresIn: '1h' });
+        return res.status(200).json({token, role:user.role});
+
+    } catch (err) {
+        console.error("Error: ", err);
+        res.status(500).json({ error: "Server error." });
+    }
+};
 const uploadProfileFile = async (req, res) => {
     if(!req.file){
         return res.status(400).json({message : "No send file"});
@@ -143,18 +159,6 @@ const uploadProfileFile = async (req, res) => {
         res.status(500).json({ message: 'Şəkil yüklənmədi.', error: err.message });
     }
 }
-
-/* const postUsers = async(req,res) =>{
-    
-    try { 
-        const newUsers = req.body
-       await userItem.create(newUsers)
-        res.json(newUsers)
-    } catch (error) {
-        console.log("Post time error");
-        
-    }
-} */
 
 
 //delete
