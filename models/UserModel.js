@@ -2,14 +2,18 @@ import mongoose from "mongoose";
 import bcrypt from 'bcrypt'
 
 export const usersSchema = mongoose.Schema({
-    imgURL:{type:String, default: ""},
-    first_name:{type:String, required: true},
+    imgURL:{type:String, default: "defaultProfileImg"},
+    first_name:{type:String, default: ""},
     last_name:{type:String, default: ""},
     username:{type:String, required: true, unique: true},
-    birthday:{type:Date},
+    birthday:{type:Date, default: null},
     email:{type:String, required: true}, 
     password:{type:String, required: true},
+    country:{type:String, default: "Azerbaijan"},
+    location:{type:String, default: "Azerbaijan, Baku"},
     isActive:{type:Boolean, default: false},
+    confrimEmail:{type:Boolean, default: false},
+    complectedRegister:{type:Boolean, default: false},
     role: { type: String, default: 'user' } 
 } , {timestamps:true});
 
