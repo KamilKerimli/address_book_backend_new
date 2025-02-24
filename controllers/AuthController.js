@@ -1,12 +1,13 @@
 import userItem from '../models/UserModel.js';
+import verifyCodeItem from '../models/VerifyCodesModel.js';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 
 const register = async (req, res) => {
     try {
-        const { first_name, username, email, password } = req.body;
+        const { username, email, phoneNumber, password } = req.body;
 
-        if (!first_name || !username || !email || !password) {
+        if (!username || !email || !phoneNumber || !password) {
             return res.status(400).json({ message: "Please enter all area" });
         }
 
@@ -17,27 +18,30 @@ const register = async (req, res) => {
 
         const existingUsernameUser = await userItem.findOne({username});
         if(existingUsernameUser){
-            return res.status(409).json({ message: "The username you entered is already in use. Please enter a new username if you don't mind." });
+            return res.status(409).json({ message: "This username is already in use." });
         }
 
         const newUser = new userItem({
-            first_name,
             username,
             email,
-            password: password,
+            phoneNumber,
+            password
         });
-
         await newUser.save();
-        res.status(201).json({ message: "The user has successfully registered.", redirect: '/auth/login' });
+
+        res.status(201).json({ message: "The user has successfully registered.", redirect: '/login' });
     } catch (err) {
-        console.error("Error: ", err.message);
         res.status(500).json({ message: "Server error" });
     }
 };
 
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.query;
+        
+        if (!email || !password) {
+            return res.status(400).json({ message: "Please enter all area" });
+        }
 
         const user = await userItem.findOne({ email });
         if (!user) {
@@ -49,40 +53,27 @@ const login = async (req, res) => {
             return res.status(400).json({ message: "Email or password is not correct." });
         }
 
-        const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '10m' });
+        const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-        res.status(200).json({ token });
+        res.status(200).json({ token: token, role: user.role, email: user.email });
     } catch (err) {
         console.error("Error: ", err.message);
         res.status(500).json({ message: "Server error" });
     }
 };
 
-const checkToken = async (req, res) => {
-    try {
-        const token = req.header('Authorization');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        const currentTime = Math.floor(Date.now() / 1000);
-        const remainingTime = decoded.exp - currentTime;
-
-        res.status(200).json({
-            message: "The token is valid.",
-            expiresIn: `${remainingTime} seconds left.`,
-        });
-    } catch (err) {
-        if (err.name === "TokenExpiredError") {
-            res.status(401).json({ message: "The token has expired." });
-        } else {
-            res.status(401).json({ message: "The token is invalid." });
-        }
-    }
-};
-
 const sendVerificationCode = async (req, res) => {
+    const { email } = req.query;
+    
+    if (!email) {
+        return res.status(400).json({message: "Please fill email area"});
+    }
     const confirmCode = Math.floor(100000 + Math.random() * 900000);
 
-    const { toEmail } = req.body;
+    const existingUser = await userItem.findOne({ email });
+    if (!existingUser) {
+        return res.status(409).json({ message: "User not found. Please register or login. ;)" });
+    }
 
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -92,9 +83,9 @@ const sendVerificationCode = async (req, res) => {
         },
     });
 
-    const mailOptions = {
+    const mailOptions = { 
         from: process.env.EMAIL_USER,
-        to: toEmail,
+        to: email,
         subject: 'Your Confirmation Code',
     html: `
         <div style="font-family: Arial, sans-serif; color: #333; text-align: center;">
@@ -112,12 +103,34 @@ const sendVerificationCode = async (req, res) => {
 
     try {
         const info = await transporter.sendMail(mailOptions);
-        console.log('Email send successfully:', info.response);
+        
+        const newVerify = new verifyCodeItem({
+            email,
+            confirmCode
+        });
+        await newVerify.save();
+
         res.status(200).json({message: "Email send successfully :)"})
     } catch (error) {
-        console.error('Email is not sended: ', error.message);
         res.status(400).json({message: "Email is not sended :("})
     }
 };
 
-export {register, login, checkToken, sendVerificationCode };
+const getCode = async (req, res) =>{
+    try {
+        const { email } = req.query;
+
+        if (!email) { return res.status(400).json({ message: "Please enter all area" }); }
+    
+        const verifyCode = await verifyCodeItem
+                                .find({ email }) 
+                                .sort({ createdAt: -1 })
+                                .limit(1); 
+    
+        res.status(200).json({code: verifyCode[0].confirmCode });
+    } catch (err) {
+        res.status(500).json({message: 'Server error' });
+    }
+}
+
+export { login, register, sendVerificationCode, getCode };

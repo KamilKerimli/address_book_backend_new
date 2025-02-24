@@ -3,12 +3,15 @@ import userItem from '../models/UserModel.js';
 
 export const authenticate = async (req, res, next) => {
     try {
+        console.log()
         const token = req.header('Authorization');
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await userItem.findOne({ _id: decoded._id });
 
         if (!user) {
-            throw new Error();
+            res.status(404).json({message: "Please try again login"});
+            return;
+            // throw new Error();
         }
 
         req.token = token;

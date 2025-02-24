@@ -1,4 +1,6 @@
 import userItem from "../models/UserModel.js"
+import addressItem from "../models/AddressModel.js"
+import subscribeUserItem from "../models/SubscribeUserModel.js"
 import cloudinary from 'cloudinary';
 
 // OK
@@ -33,41 +35,40 @@ const createUser = async (req, res) => {
         res.status(500).json({ message: "Server error"});
     }
 };
-
 //ok
 const updateUser = async (req, res) => {
-    try {
+    
         const { 
+            file,
             username, 
-            first_name, 
-            last_name,
+            firstName, 
+            lastName,
             country,
             location,
             email,
-            password,
-            phoneNumber,
+            phone,
             birthday,
-            addresses,
-            request
+            addressList
         } = req.body;
 
-        const user = userItem.findOne({email});
+        const user = await userItem.findOne({email});
         if (!user) return res.status(404).json({ message: "User not found"});
 
-        if (!username || !last_name || !first_name || !country || 
-        !location || !email || !phoneNumber || !birthday || !addresses || 
-        !request) {
+        if (!username || !country || 
+        !location || !email || !phone || !birthday || !addressList) {
             return res.status(400).json({ message: "Please enter values for all fields." });
         }
 
         const newData = {
-            first_name: first_name,
-            last_name: last_name,
+            first_name: firstName,
+            last_name: lastName,
             birthday: birthday,
             country: country,
+            location: location,
+            phoneNumber: phone,
         };
-
-        if (req.file) {
+    try {
+        if (file) {
             const fileBuffer = req.file.buffer.toString('base64');
 
             const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${fileBuffer}`, {
@@ -78,27 +79,43 @@ const updateUser = async (req, res) => {
             newData.imgURL = result.secure_url;
         }
 
-        if (request === "update" && password) {
-            newData.password = await bcrypt.hash(password, 4);
-        }
-
         const updatedUser = await userItem.findByIdAndUpdate(
             user._id,
             { $set: newData },
             { new: true, runValidators: true }
         );
 
-        res.status(200).json({ message: "Please confirm email address", user: updateUser});
+        for (let index = 0; index < addressList.length; index++) {
+            const address = addressList[index];
+            const existAddress = await addressItem.findOne({_id: address._id});
+            if (existAddress != null) {
+                const updatedAddress = await userItem.findByIdAndUpdate(
+                    address._id,
+                    { $set: address },
+                    { new: true, runValidators: true }
+                );
+            }
+            else{
+                const newAddress = addressItem({
+                    email: address.email,
+                    addressType: address.addressType,
+                    shortAddress: address.shortAddress,
+                    realAddress: address.realAddress,
+                });
+                await newAddress.save();
+            }
+        }
+
+        res.status(200).json({ message: "User all data updated"});
     } catch (err) {
-        console.error("Error: ", err); 
+        console.error("Error: ", err.message); 
         res.status(500).json({ message: "Server error"});
     }
 };
-
 //OK
 const getUser = async (req, res) => {
     try {
-        const email = req.query.email;
+        const { email } = req.query;
 
         if (!email) {
             return res.status(400).json({ message: "Please enter email" });
@@ -110,15 +127,13 @@ const getUser = async (req, res) => {
             res.status(404).json({ message: "Please enter correct email" });
         } 
 
-        // const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, { expiresIn: '1h' });
-        return res.status(200).json({message: "ok"});
+        return res.status(200).json({user: user});
 
     } catch (err) {
         console.error("Error: ", err);
-        res.status(500).json({ error: "Server error." });
+        res.status(500).json({ message: "Server error." });
     }
 };
-
 //ok
 const deleteUser = async (req,res) => {
     try {
@@ -133,5 +148,73 @@ const deleteUser = async (req,res) => {
         return res.status(404).json({message: "Server error"});
     }
 }
+//ok
+const updatePassword = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ message: "Please provide email and password" });
+        }
+        
+        const user = await userItem.findOne({email});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        
+        user.password = password;
+        await user.save();  
+        
+        res.status(200).json({ message: "Password updated successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+//ok
+const subscribeUser = async (req, res) => {
+    const { email } = req.body;
 
-export { createUser, updateUser, getUser, deleteUser}
+    if (!email) {
+        return req.status(400).json({message: "Please enter email address"})
+    }
+
+    try {
+        const newEmail = new subscribeUserItem({
+            email: email
+        });
+        await newEmail.save();
+
+        res.status(200).json({message: "You subscripted."});
+    } catch (error) {
+        res.status(500).json({message: "Server error. Please try again later"});
+    }
+}
+//
+const getUsers = async (req, res) =>{
+    try {
+        const results = await userItem.find({}).sort({ createdAt: -1 });
+        res.status(200).json({users: results});
+    } catch (error) {
+        res.status(500).json({message: "Server error. Please try again later"});
+    }
+}
+
+const changeRole = async (req, res) => {
+    const { email } = req.body;
+    console.log(email);
+
+  try {
+    const user = await userItem.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.role = user.role === "admin" ? "user" : "admin";
+    await user.save();
+
+    res.status(200).json({ message: `User role changed to ${user.role === "admin" ? 'user' : 'admin'}` });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export { createUser, updateUser, getUser, deleteUser, updatePassword, subscribeUser, getUsers, changeRole }

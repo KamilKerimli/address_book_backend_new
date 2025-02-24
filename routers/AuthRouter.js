@@ -1,20 +1,13 @@
 import express from 'express';
-import { login, register, checkToken, sendVerificationCode } from '../controllers/AuthController.js';
-import { authorize } from '../middleware/AuthMiddleware.js';
+import { login, register, sendVerificationCode, getCode } from '../controllers/AuthController.js';
 
-const router = express.Router();
+const AuthRouter = express.Router();
 
-router.post('/login', login);
-router.post('/register', register);
-router.post('/checkToken', checkToken);
-router.get('/sendCode', sendVerificationCode);
+AuthRouter.route("/")
+.get(login)
+.post(register);
 
-router.get('/admin', authorize(['admin']), (req, res) => {
-    res.status(200).json({ message: 'Welcome, admin!' });
-});
+AuthRouter.get('/sendCode', sendVerificationCode);
+AuthRouter.get('/getCode', getCode);
 
-router.get('/', authorize(['user']), (req, res) => {
-    res.status(200).json({ message: 'Welcome, user!' });
-});
-
-export default router;
+export default AuthRouter;

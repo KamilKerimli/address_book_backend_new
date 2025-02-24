@@ -7,6 +7,7 @@ export const usersSchema = mongoose.Schema({
     last_name:{type:String, default: ""},
     username:{type:String, required: true, unique: true},
     birthday:{type:Date, default: null},
+    phoneNumber:{type:String, required: true}, 
     email:{type:String, required: true}, 
     password:{type:String, required: true},
     country:{type:String, default: "Azerbaijan"},
@@ -15,7 +16,7 @@ export const usersSchema = mongoose.Schema({
     confrimEmail:{type:Boolean, default: false},
     complectedRegister:{type:Boolean, default: false},
     role: { type: String, default: 'user' } 
-} , {timestamps:true});
+}, {timestamps:true});
 
 usersSchema.pre("save", async function (next) {
     if (this.isModified("password")) {

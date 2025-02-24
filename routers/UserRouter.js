@@ -1,16 +1,18 @@
 import express from 'express';
-import { createUser, updateUser, deleteUser, getUser } from '../controllers/UserController.js';
-import multer from "multer";
+import { authenticate, authorize } from "../middleware/AuthMiddleware.js";
+import { createUser, updateUser, getUser, deleteUser, updatePassword, subscribeUser, getUsers, changeRole } from '../controllers/UserController.js';
 
-const router = express.Router();
+const UserRouter = express.Router();
 
-const storage = multer.memoryStorage();
-const upload = multer({storage: storage})
-
-router.route("/")
+UserRouter.route("/")
 .get(getUser)
 .post(createUser)
 .put(updateUser)
 .delete(deleteUser);
 
-export default router
+UserRouter.post('/updatePassword', updatePassword);
+UserRouter.post('/subscribe', subscribeUser);
+UserRouter.post('/changeRole', authenticate, authorize(['admin']), changeRole);
+UserRouter.get('/getUsers', getUsers);
+
+export default UserRouter
