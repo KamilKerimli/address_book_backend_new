@@ -1,21 +1,18 @@
-import express from 'express'
-import { phoneCodes, createUser, getUser } from '../controllers/UserController.js'
+import express from 'express';
+import { authenticate, authorize } from "../middleware/AuthMiddleware.js";
+import { createUser, updateUser, getUser, deleteUser, updatePassword, subscribeUser, getUsers, changeRole } from '../controllers/UserController.js';
 
-const router = express.Router()
+const UserRouter = express.Router();
 
-router.route("/")
+UserRouter.route("/")
 .get(getUser)
-.post(createUser) 
+.post(createUser)
+.put(updateUser)
+.delete(deleteUser);
 
-router.get("/phoneCodes", phoneCodes)
+UserRouter.post('/updatePassword', updatePassword);
+UserRouter.post('/subscribe', subscribeUser);
+UserRouter.post('/changeRole', authenticate, authorize(['admin']), changeRole);
+UserRouter.get('/getUsers', getUsers);
 
-
-// router.route("/phoneCodes")
-// .get(phoneCodes)
-/* .post(postProducts)
-
-router.route("/:id")
-.delete(deleteProducts) */
-
-
-export default router
+export default UserRouter
